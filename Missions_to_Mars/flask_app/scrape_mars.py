@@ -1,11 +1,16 @@
 # Dependencies and Setup
 from bs4 import BeautifulSoup
 from splinter import Browser
+import pandas as pd
+import requests
 
 
 # Initialize browser
 def init_browser(): 
     #Replace the path with your actual path to the chromedriver
+    # Set executable path & assign Chrome Browser
+    # executable_path = {'executable_path': './chromedriver.exe'}
+    # browser = Browser('chrome', **executable_path, headless=False)
     import os
     if os.name=="nt":
         executable_path = {'executable_path': './chromedriver.exe'}
@@ -17,35 +22,35 @@ def init_browser():
 # Function Returns All NASA Scraped Data
 #################################################
 def scrape():
-    # Create global dictionary that can be imported into Mongo
+    # Create global dictionary that can be imported into MongoDB
     mars_info = {}
-
     try: 
-        # Initialize browser 
+        # Initialize browser using function above 
         browser = init_browser()
-        #browser.is_element_present_by_css("div.content_title", wait_time=1)
 
         #################################################
         # Nasa Mars News
         #################################################
+        #browser.is_element_present_by_css("div.content_title", wait_time=1)
         # Visit Nasa news url
         url = 'https://mars.nasa.gov/news/'
         browser.visit(url)
 
         # HTML Object
-        html = browser.html
+        html_news = browser.html
 
         # Parse HTML with Beautiful Soup
-        soup = BeautifulSoup(html, 'html.parser')
+        news_soup = BeautifulSoup(html_news, 'html.parser')
 
         # Retrieve latest News Title and Paragraph Text
-        news_title = soup.find('div', class_='list_text')
-        news_p = soup.find('div', class_='article_teaser_body').text
+        news_title = news_soup.find('div', class_='list_text')
+        news_p = news_soup.find('div', class_='article_teaser_body')
+        news_paragraph=news_p.text
         news_title_txt = news_title.find("a").text
 
         # Dictionary entry from MARS NEWS
         mars_info['news_title'] = news_title_txt
-        mars_info['news_paragraph'] = news_p
+        mars_info['news_paragraph'] = news_paragraph
 
 
         #################################################
@@ -86,15 +91,22 @@ def scrape():
         # Parse HTML with Beautiful Soup
         weather_soup = BeautifulSoup(html_weather, 'html.parser')
 
-        # Scrape the latest Mars weather tweet from the page
-        latest_mars_weather = weather_soup.find('div', class_ = "css-901oao r-hkyrab r-1qd0xha r-a023e6 r-16dba41 r-ad9z0x r-bcqeeo r-bnwqim r-qvutc0")
+        weather_tweets = weather_soup.find_all('span')
+        # Print weather_tweets
+
+        # Retrieve all elements that contain tweet text in the specified range
+        # Look for entries that display weather related words to exclude non weather related tweets 
+        for tweet in weather_tweets: 
+            mars_weather_tweet = tweet.text
+            if 'InSight sol' and 'pressure' in mars_weather_tweet:
+                # print(f"{mars_weather_tweet}")
+                print(mars_weather_tweet)
+                break
+            else: 
+                pass
+        # Save to dictionary
+        mars_info['weather_mars']  = str(mars_weather_tweet)
         
-        # Save the latest Mars weather tweet
-        mars_weather = latest_mars_weather.find("span").text
-
-        mars_info['mars_weather'] = mars_weather
-
-
         #################################################
         # Mars Facts
         #################################################
@@ -157,9 +169,11 @@ def scrape():
 
         mars_info['hemisphere_image_urls']=hemisphere_image_urls
 
+        browser.quit()
         # Return mars_data dictionary 
         return mars_info
 
     finally:
         browser.quit()
-    
+
+print(scrape())
